@@ -2,6 +2,6 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 
-import { main } from "./day2/puzzle.js";
+import { main } from "./day3/puzzle.js";
 
 main();

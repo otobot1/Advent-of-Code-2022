@@ -5,13 +5,10 @@ import fs from "fs";
 
 type Directory = {
     name: string;
-    parentDirectory: string;
     directContentsSize: number;
-    subDirectories: string[];
-}
-
-type DirectoryCollection = {
-    [index: string]: Directory;
+    subDirectories: {
+        [index: string]: Directory;
+    };
 }
 
 
@@ -41,10 +38,10 @@ const puzzle1 = () => {
     const stringArray = fileContents.split(/\r?\n/);
 
 
-    const directoryCollection = getDirectoryCollection(stringArray);
+    const rootDirectory = getRootDirectory(stringArray);
 
 
-    const overallSum = getOverallSum(directoryCollection);
+    const overallSum = getOverallSum(rootDirectory);
 
 
     console.log(overallSum);
@@ -53,22 +50,43 @@ const puzzle1 = () => {
 
 
 
-const getDirectoryCollection = (stringArray: string[]): DirectoryCollection => {
-    const directoryCollection: DirectoryCollection = {
-        "/": {
-            name: "/",
-            parentDirectory: "",
-            directContentsSize: 0,
-            subDirectories: [],
-        }
+const puzzle2 = () => {
+    const inputPath = `${process.env.PROJECT_ROOT}/src/day7/input.txt`;
+    if (!inputPath) throw "Invalid inputPath";
+
+
+    const fileContents = fs.readFileSync(inputPath, "utf8");
+
+
+    const stringArray = fileContents.split(/\r?\n/);
+
+
+    const rootDirectory = getRootDirectory(stringArray);
+
+
+    const overallSum = getOverallSum(rootDirectory);
+
+
+    console.log(overallSum);
+}
+
+
+
+
+const getRootDirectory = (stringArray: string[]): Directory => {
+    const rootDirectory: Directory = {
+        name: "/",
+        directContentsSize: 0,
+        subDirectories: {},
     };
 
-    let currentDirectory = directoryCollection["/"];
+    let directoryBuffer: Directory[] = [];
+    let currentDirectory = rootDirectory;
 
 
     for (const command of stringArray) {
         if (command.startsWith(cdPrefix)) {
-            currentDirectory = handleCd(directoryCollection, currentDirectory, command);    //breaks here because code expects unique dir names :dead:
+            currentDirectory = handleCd(directoryBuffer, currentDirectory, command);
             continue;
         }
 
@@ -77,14 +95,12 @@ const getDirectoryCollection = (stringArray: string[]): DirectoryCollection => {
 
 
         if (command.startsWith(dirPrefix)) {
-            const remainder = command.slice(dirPrefix.length);
-
-            currentDirectory.subDirectories.push(remainder);
+            handleDir(currentDirectory, command);
 
             continue;
         }
 
-        
+
         const size = Number(command.split(" ")[0]);
 
         if (isNaN(size)) throw "size is NaN.";
@@ -93,31 +109,32 @@ const getDirectoryCollection = (stringArray: string[]): DirectoryCollection => {
     }
 
 
-    return directoryCollection;
+    return rootDirectory;
 }
 
 
 
 
-const handleCd = (directoryCollection: DirectoryCollection, currentDirectory: Directory, command: string): Directory => {
+const handleCd = (directoryBuffer: Directory[], currentDirectory: Directory, command: string): Directory => {
     const remainder = command.slice(cdPrefix.length);
 
-    if (remainder === "..") return directoryCollection[currentDirectory.parentDirectory];
+
+    if (remainder === "/") return currentDirectory;
 
 
-    let newCurrentDirectory = directoryCollection[remainder];
+    let newCurrentDirectory: Directory | undefined;
 
-    if (!newCurrentDirectory) {
-        newCurrentDirectory = {
-            name: remainder,
-            parentDirectory: currentDirectory.name,
-            directContentsSize: 0,
-            subDirectories: [],
-        };
 
-        directoryCollection[remainder] = newCurrentDirectory;
+    if (remainder === "..") {
+        newCurrentDirectory = directoryBuffer.pop();
+    }
+    else {
+        newCurrentDirectory = currentDirectory.subDirectories[remainder];
+        directoryBuffer.push(currentDirectory);
     }
 
+
+    if (!newCurrentDirectory) throw "newCurrentDirectory is undefined.";
 
     return newCurrentDirectory;
 }
@@ -125,14 +142,31 @@ const handleCd = (directoryCollection: DirectoryCollection, currentDirectory: Di
 
 
 
-const getOverallSum = (directoryCollection: DirectoryCollection): number => {
+const handleDir = (currentDirectory: Directory, command: string): void => {
+    const remainder = command.slice(dirPrefix.length);
+
+    const newDirectory: Directory = {
+        name: remainder,
+        directContentsSize: 0,
+        subDirectories: {},
+    };
+
+    currentDirectory.subDirectories[remainder] = newDirectory;
+}
+
+
+
+
+const getOverallSum = (rootDirectory: Directory): number => {
+    const sumArray: number[] = [];
+
+    getSumArray(sumArray, rootDirectory);
+
+
     let overallSum = 0;
 
-
-    for (const [_primaryDirectoryName, primaryDirectory] of Object.entries(directoryCollection)) {
-        const directorySum = getSumRecursive(directoryCollection, primaryDirectory);
-
-        if (directorySum <= 100000) overallSum += directorySum;
+    for (const sum of sumArray) {
+        if (sum <= 100000) overallSum += sum;
     }
 
 
@@ -142,13 +176,16 @@ const getOverallSum = (directoryCollection: DirectoryCollection): number => {
 
 
 
-const getSumRecursive = (directoryCollection: DirectoryCollection, directory: Directory): number => {
+const getSumArray = (sumArray: number[], directory: Directory): number => {
     let sum = directory.directContentsSize;
 
 
-    for (const subDirectoryName of directory.subDirectories) {
-        sum += getSumRecursive(directoryCollection, directoryCollection[subDirectoryName]);
+    for (const [_subDirectoryName, subDirectory] of Object.entries(directory.subDirectories)) {
+        sum += getSumArray(sumArray, subDirectory);
     }
+
+
+    sumArray.push(sum);
 
 
     return sum;

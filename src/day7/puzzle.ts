@@ -15,7 +15,7 @@ type Directory = {
 
 
 export const main = () => {
-    puzzle1();
+    puzzle2();
 }
 
 
@@ -23,6 +23,8 @@ export const main = () => {
 
 const cdPrefix = "$ cd ";
 const dirPrefix = "dir ";
+const TOTAL_DISK_SIZE = 70000000;
+const REQUIRED_FREE_SPACE = 30000000;
 
 
 
@@ -64,10 +66,19 @@ const puzzle2 = () => {
     const rootDirectory = getRootDirectory(stringArray);
 
 
-    const overallSum = getOverallSum(rootDirectory);
+    const sumArray: number[] = [];
+
+    getSumArray(sumArray, rootDirectory);
 
 
-    console.log(overallSum);
+    const currentSpaceFree = TOTAL_DISK_SIZE - sumArray[sumArray.length - 1];
+
+    const additionalSpaceRequired = REQUIRED_FREE_SPACE - currentSpaceFree;
+
+    const minimumSize = getSmallestSufficientDirectory(additionalSpaceRequired, sumArray);
+
+
+    console.log(minimumSize);
 }
 
 
@@ -176,11 +187,11 @@ const getOverallSum = (rootDirectory: Directory): number => {
 
 
 
-const getSumArray = (sumArray: number[], directory: Directory): number => {
-    let sum = directory.directContentsSize;
+const getSumArray = (sumArray: number[], currentDirectory: Directory): number => {
+    let sum = currentDirectory.directContentsSize;
 
 
-    for (const [_subDirectoryName, subDirectory] of Object.entries(directory.subDirectories)) {
+    for (const [_subDirectoryName, subDirectory] of Object.entries(currentDirectory.subDirectories)) {
         sum += getSumArray(sumArray, subDirectory);
     }
 
@@ -189,4 +200,18 @@ const getSumArray = (sumArray: number[], directory: Directory): number => {
 
 
     return sum;
+}
+
+
+
+
+const getSmallestSufficientDirectory = (targetMinimum: number, sumArray: number[]): number => {
+    let currentMinimum = TOTAL_DISK_SIZE;
+    
+    for (const size of sumArray) {
+        if (size > targetMinimum && size < currentMinimum) currentMinimum = size;
+    }
+
+
+    return currentMinimum;
 }

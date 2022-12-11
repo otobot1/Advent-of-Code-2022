@@ -63,17 +63,20 @@ const puzzle2 = () => {
 
 
 const getImage = (stringArray: string[]): number[] => {
-    const image: number[] = Array(40 * 6).fill(0);
+    const image: number[] = Array(40 * 6).fill(null);
     const stringArrayLength = stringArray.length;
     let stringIndex = -1;
     let state: States = <States>"noop";
-    let cycle = 1;
+    let cycle = 0;
     let xRegister = 1;
     let numToAdd: number | undefined = undefined;
 
 
     while (cycle <= 99999) {
-        if (cycle >= xRegister - 1 && cycle <= xRegister + 1) image[cycle - 1] = 1;
+        const horizontalPosition = cycle % 40;
+
+        if (horizontalPosition >= xRegister - 1 && horizontalPosition <= xRegister + 1) image[cycle] = 1;
+        else image[cycle] = 0;
 
 
         if (state === "noop" || state === "add2") {
@@ -120,6 +123,8 @@ const getImage = (stringArray: string[]): number[] => {
 
 
 const getOutputStringArray = (image: number[]): string[] => {
+    //printImage(image);
+    
     const outputStringArray: string[] = [];
 
 
@@ -140,6 +145,20 @@ const getOutputStringArray = (image: number[]): string[] => {
 
 
     return outputStringArray;
+}
+
+
+
+
+const printImage = (image: number[]): void => {
+    const stringArray: string[] = [];
+
+    for (let index = 0; index < image.length; index += 40) {
+        const row = image.slice(index, index + 40).join("");
+        stringArray.push(row);
+    }
+
+    console.log(stringArray.join("\r\n") + "\r\n");
 }
 
 

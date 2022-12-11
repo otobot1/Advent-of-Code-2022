@@ -20,7 +20,7 @@ type Monkey = {
 
 
 export const main = () => {
-    puzzle1();
+    puzzle2();
 }
 
 
@@ -41,7 +41,34 @@ const puzzle1 = () => {
     const monkeys = getMonkeys(stringArray, items);
 
 
-    executeRounds(monkeys, items, 20);
+    executeRounds(monkeys, items, 20, true);
+
+
+    const monkeyBusiness = getMonkeyBusiness(monkeys);
+
+
+    console.log(monkeyBusiness);
+}
+
+
+
+
+const puzzle2 = () => {
+    const inputPath = `${process.env.PROJECT_ROOT}/src/day11/input.txt`;
+    if (!inputPath) throw "Invalid inputPath";
+
+
+    const fileContents = fs.readFileSync(inputPath, "utf8");
+
+
+    const stringArray = fileContents.split(/\r?\n/);
+
+
+    const items: number[] = [];
+    const monkeys = getMonkeys(stringArray, items);
+
+
+    executeRounds(monkeys, items, 10000, false);
 
 
     const monkeyBusiness = getMonkeyBusiness(monkeys);
@@ -130,7 +157,10 @@ const getMonkeys = (stringArray: string[], items: number[]): Monkey[] => {
 
 
 
-const executeRounds = (monkeys: Monkey[], items: number[], roundCount: number): void => {
+const executeRounds = (monkeys: Monkey[], items: number[], roundCount: number, decreaseWorry: boolean): void => {
+    const divisorsProduct = getDivisorsProduct(monkeys);
+
+
     for (let round = 1; round <= roundCount; round++) {
         for (const monkey of monkeys) {
             for (const itemIndex of monkey.items) {
@@ -147,7 +177,8 @@ const executeRounds = (monkeys: Monkey[], items: number[], roundCount: number): 
                 else throw "Invalid operation.";
 
 
-                worryLevel = Math.floor(worryLevel / 3);
+                if (decreaseWorry) worryLevel = Math.floor(worryLevel / 3);
+                else worryLevel = worryLevel % divisorsProduct;
 
 
                 items[itemIndex] = worryLevel;
@@ -191,6 +222,19 @@ const getMonkeyBusiness = (monkeys: Monkey[]): number => {
 
 
     return monkeyBusiness;
+}
+
+
+
+
+const getDivisorsProduct = (monkeys: Monkey[]): number => {
+    let product = 1;
+
+    for (const monkey of monkeys) {
+        product *= monkey.testDivisor;
+    }
+
+    return product;
 }
 
 

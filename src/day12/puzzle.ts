@@ -19,7 +19,6 @@ type subQueue = {
 
 
 type GridInfo = {
-    startingNode: Node;
     endingNode: Node;
     grid: Node[][];
     queue: subQueue[];
@@ -29,7 +28,7 @@ type GridInfo = {
 
 
 export const main = () => {
-    puzzle1();
+    puzzle2();
 }
 
 
@@ -46,10 +45,10 @@ const puzzle1 = () => {
     const stringArray = fileContents.split(/\r?\n/);
 
 
-    const gridInfo = getGridInfo(stringArray);
+    const gridInfo = getGridInfo(stringArray, false);
 
 
-    traverseNodes(gridInfo);
+    traverseNodes(gridInfo, false);
 
 
     const shortestPathLength = gridInfo.endingNode.distance;
@@ -61,7 +60,33 @@ const puzzle1 = () => {
 
 
 
-const getGridInfo = (stringArray: string[]): GridInfo => {
+const puzzle2 = () => {
+    const inputPath = `${process.env.PROJECT_ROOT}/src/day12/test-input.txt`;
+    if (!inputPath) throw "Invalid inputPath";
+
+
+    const fileContents = fs.readFileSync(inputPath, "utf8");
+
+
+    const stringArray = fileContents.split(/\r?\n/);
+
+
+    const gridInfo = getGridInfo(stringArray, true);
+
+
+    traverseNodes(gridInfo, true);
+
+
+    const shortestPathLength = getNearestLowPointDistance(gridInfo);
+
+
+    console.log(shortestPathLength);
+}
+
+
+
+
+const getGridInfo = (stringArray: string[], mode: boolean): GridInfo => {
     const rowCount = stringArray.length;
     const columnCount = stringArray[0].length;
 
@@ -98,7 +123,7 @@ const getGridInfo = (stringArray: string[]): GridInfo => {
             else {
                 node.height = column.charCodeAt(0);
             }
-            
+
 
             rowNodes.push(node);
         }
@@ -111,14 +136,15 @@ const getGridInfo = (stringArray: string[]): GridInfo => {
     if (!startingNode || !endingNode) throw "Undefined starting or ending node.";
 
 
+    const initialNode = mode ? endingNode : startingNode;
+
     const subQueue: subQueue = {
         distance: 0,
-        nodes: [startingNode],
+        nodes: [initialNode],
     }
 
 
     const gridInfo: GridInfo = {
-        startingNode: startingNode,
         endingNode: endingNode,
         grid: grid,
         queue: [subQueue],
@@ -131,7 +157,7 @@ const getGridInfo = (stringArray: string[]): GridInfo => {
 
 
 
-const traverseNodes = (gridInfo: GridInfo): void => {
+const traverseNodes = (gridInfo: GridInfo, mode: boolean): void => {
     const queue = gridInfo.queue;
     const endingNode = gridInfo.endingNode;
 
@@ -159,26 +185,30 @@ const traverseNodes = (gridInfo: GridInfo): void => {
         // );
 
         if (!currentNode.checked) {
-            checkNode(gridInfo, currentNode);
+            if (mode) {
+                checkNode2(gridInfo, currentNode);
+            }
+            else {
+                checkNode1(gridInfo, currentNode);
 
 
-            if (currentNode === endingNode) {
-                success = true;
-                break;
+                if (currentNode === endingNode) {
+                    success = true;
+                    break;
+                }
             }
         }
     }
 
 
-    if (!success) console.log("Failure.");
+    if (!mode && !success) console.log("Failure.");
 }
 
 
 
 
-const checkNode = (gridInfo: GridInfo, currentNode: Node): void => {
+const checkNode1 = (gridInfo: GridInfo, currentNode: Node): void => {
     const grid = gridInfo.grid;
-    const queue = gridInfo.queue;
 
     const currentNodeHeight = currentNode.height;
     const newTentativeDistance = currentNode.distance + 1;
@@ -195,7 +225,36 @@ const checkNode = (gridInfo: GridInfo, currentNode: Node): void => {
 
             neighbour.distance = newTentativeDistance;
 
-            placeInQueue(queue, neighbour);
+            placeInQueue(gridInfo, neighbour);
+        }
+    }
+
+
+    currentNode.checked = true;
+}
+
+
+
+
+const checkNode2 = (gridInfo: GridInfo, currentNode: Node): void => {
+    const grid = gridInfo.grid;
+
+    const currentNodeHeight = currentNode.height;
+    const newTentativeDistance = currentNode.distance + 1;
+    const neighbours = getNeighbours(grid, currentNode);
+
+
+    for (const neighbour of neighbours) {
+        const neighbourHeight = neighbour.height;
+        const neighbourDistance = neighbour.distance;
+
+
+        if (neighbourHeight <= currentNodeHeight + 1) {
+            if (newTentativeDistance >= neighbourDistance) continue;
+
+            neighbour.distance = newTentativeDistance;
+
+            placeInQueue(gridInfo, neighbour);
         }
     }
 
@@ -233,7 +292,8 @@ const getNeighbours = (grid: Node[][], currentNode: Node): Node[] => {
 
 
 
-const placeInQueue = (queue: subQueue[], node: Node): void => {
+const placeInQueue = (gridInfo: GridInfo, node: Node): void => {
+    const queue = gridInfo.queue;
     const queueLength = queue.length;
     const nodeDistance = node.distance;
 
@@ -273,7 +333,32 @@ const placeInQueue = (queue: subQueue[], node: Node): void => {
         return;
     }
 
-    
+
     //nodeDistance is greater than any extant subQueue.distance
     queue.push(newSubQueue);
+}
+
+
+
+
+const getNearestLowPointDistance = (gridInfo: GridInfo): number => {
+    const grid = gridInfo.grid;
+    const lowPointHeight = "a".charCodeAt(0);
+
+    let shortestPathLength = 999999;
+
+
+    for (const row of grid) {
+        for (const node of row) {
+            if (node.height !== lowPointHeight) continue;
+
+            
+            const distance = node.distance;
+
+            if (distance < shortestPathLength) shortestPathLength = distance;
+        }
+    }
+
+
+    return shortestPathLength;
 }

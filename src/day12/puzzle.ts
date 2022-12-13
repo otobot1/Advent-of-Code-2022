@@ -19,10 +19,16 @@ type subQueue = {
 
 
 type GridInfo = {
+    success: boolean;
     endingNode: Node;
     grid: Node[][];
     queue: subQueue[];
 }
+
+
+
+
+const lowPointHeight = "a".charCodeAt(0);
 
 
 
@@ -61,7 +67,7 @@ const puzzle1 = () => {
 
 
 const puzzle2 = () => {
-    const inputPath = `${process.env.PROJECT_ROOT}/src/day12/test-input.txt`;
+    const inputPath = `${process.env.PROJECT_ROOT}/src/day12/input.txt`;
     if (!inputPath) throw "Invalid inputPath";
 
 
@@ -112,12 +118,13 @@ const getGridInfo = (stringArray: string[], mode: boolean): GridInfo => {
 
 
             if (column === "S") {
-                node.height = "a".charCodeAt(0);
-                node.distance = 0;
+                node.height = lowPointHeight;
+                node.distance = mode ? Infinity : 0;
                 startingNode = node;
             }
             else if (column === "E") {
                 node.height = "z".charCodeAt(0);
+                node.distance = mode ? 0 : Infinity;
                 endingNode = node;
             }
             else {
@@ -145,6 +152,7 @@ const getGridInfo = (stringArray: string[], mode: boolean): GridInfo => {
 
 
     const gridInfo: GridInfo = {
+        success: false,
         endingNode: endingNode,
         grid: grid,
         queue: [subQueue],
@@ -162,7 +170,6 @@ const traverseNodes = (gridInfo: GridInfo, mode: boolean): void => {
     const endingNode = gridInfo.endingNode;
 
 
-    let success = false;
     let subQueue = queue[0];
     let i = 0;
 
@@ -179,21 +186,17 @@ const traverseNodes = (gridInfo: GridInfo, mode: boolean): void => {
         const currentNode = subQueue.nodes.shift()!;      //guaranteed to be defined. can't exit while loop while subqueue is empty.
 
 
-        // const breakpoint = (
-        //     (currentNode.rowIndex >= endingNode.rowIndex - 1 && currentNode.rowIndex <= endingNode.rowIndex + 1 && currentNode.columnIndex === endingNode.columnIndex) ||
-        //     (currentNode.columnIndex >= endingNode.columnIndex - 1 && currentNode.columnIndex <= endingNode.columnIndex + 1 && currentNode.rowIndex === endingNode.rowIndex)
-        // );
-
         if (!currentNode.checked) {
             if (mode) {
                 checkNode2(gridInfo, currentNode);
+                if (gridInfo.success) break;
             }
             else {
                 checkNode1(gridInfo, currentNode);
 
 
                 if (currentNode === endingNode) {
-                    success = true;
+                    gridInfo.success = true;
                     break;
                 }
             }
@@ -201,7 +204,7 @@ const traverseNodes = (gridInfo: GridInfo, mode: boolean): void => {
     }
 
 
-    if (!mode && !success) console.log("Failure.");
+    if (!gridInfo.success) console.log("Failure.");
 }
 
 
@@ -249,12 +252,15 @@ const checkNode2 = (gridInfo: GridInfo, currentNode: Node): void => {
         const neighbourDistance = neighbour.distance;
 
 
-        if (neighbourHeight <= currentNodeHeight + 1) {
+        if (currentNodeHeight <= neighbourHeight + 1) {
             if (newTentativeDistance >= neighbourDistance) continue;
 
             neighbour.distance = newTentativeDistance;
 
             placeInQueue(gridInfo, neighbour);
+
+
+            if (neighbourHeight === lowPointHeight) gridInfo.success = true;
         }
     }
 
@@ -343,7 +349,6 @@ const placeInQueue = (gridInfo: GridInfo, node: Node): void => {
 
 const getNearestLowPointDistance = (gridInfo: GridInfo): number => {
     const grid = gridInfo.grid;
-    const lowPointHeight = "a".charCodeAt(0);
 
     let shortestPathLength = 999999;
 
@@ -352,7 +357,7 @@ const getNearestLowPointDistance = (gridInfo: GridInfo): number => {
         for (const node of row) {
             if (node.height !== lowPointHeight) continue;
 
-            
+
             const distance = node.distance;
 
             if (distance < shortestPathLength) shortestPathLength = distance;

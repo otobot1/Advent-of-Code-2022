@@ -30,7 +30,7 @@ const REQUIRED_FREE_SPACE = 30000000;
 
 
 const puzzle1 = () => {
-    const inputPath = `${process.env.PROJECT_ROOT}/src/day7/input.txt`;
+    const inputPath = `${process.env.PROJECT_ROOT}/src/day07/input.txt`;
     if (!inputPath) throw "Invalid inputPath";
 
 
@@ -53,7 +53,7 @@ const puzzle1 = () => {
 
 
 const puzzle2 = () => {
-    const inputPath = `${process.env.PROJECT_ROOT}/src/day7/input.txt`;
+    const inputPath = `${process.env.PROJECT_ROOT}/src/day07/input.txt`;
     if (!inputPath) throw "Invalid inputPath";
 
 

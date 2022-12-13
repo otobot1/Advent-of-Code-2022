@@ -11,7 +11,7 @@ export const main = () => {
 
 
 const puzzle1And2 = () => {
-    const inputPath = `${process.env.PROJECT_ROOT}/src/day1/input.txt`;
+    const inputPath = `${process.env.PROJECT_ROOT}/src/day01/input.txt`;
     if (!inputPath) throw "Invalid inputPath";
 
 

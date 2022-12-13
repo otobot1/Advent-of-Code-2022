@@ -1,6 +1,6 @@
 import fs from "fs";
 
-import { types, Types } from "../day3/puzzle.js";
+import { types, Types } from "../day03/puzzle.js";
 
 
 
@@ -13,7 +13,7 @@ export const main = () => {
 
 
 const puzzle1 = () => {
-    const inputPath = `${process.env.PROJECT_ROOT}/src/day5/input.txt`;
+    const inputPath = `${process.env.PROJECT_ROOT}/src/day05/input.txt`;
     if (!inputPath) throw "Invalid inputPath";
 
 
@@ -79,7 +79,7 @@ const puzzle1 = () => {
 
 
 const puzzle2 = () => {
-    const inputPath = `${process.env.PROJECT_ROOT}/src/day5/input.txt`;
+    const inputPath = `${process.env.PROJECT_ROOT}/src/day05/input.txt`;
     if (!inputPath) throw "Invalid inputPath";
 
 

@@ -82,7 +82,7 @@ export const main = () => {
 
 
 const puzzle1 = () => {
-    const inputPath = `${process.env.PROJECT_ROOT}/src/day2/input.txt`;
+    const inputPath = `${process.env.PROJECT_ROOT}/src/day02/input.txt`;
     if (!inputPath) throw "Invalid inputPath";
 
 
@@ -123,7 +123,7 @@ const puzzle1 = () => {
 
 
 const puzzle2 = () => {
-    const inputPath = `${process.env.PROJECT_ROOT}/src/day2/input.txt`;
+    const inputPath = `${process.env.PROJECT_ROOT}/src/day02/input.txt`;
     if (!inputPath) throw "Invalid inputPath";
 
 

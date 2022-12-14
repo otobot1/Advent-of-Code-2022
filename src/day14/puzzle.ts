@@ -297,7 +297,7 @@ const printGridToFile = (gridInfo: GridInfo): void => {
             const node = row[columnIndex];
 
 
-            if (columnIndex < 150 || columnIndex > row.length - 150) continue;
+            if (columnIndex < 20 || columnIndex > row.length - 20) continue;
 
 
             let string: string;

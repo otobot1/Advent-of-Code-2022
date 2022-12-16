@@ -1,5 +1,5 @@
 import fs from "fs";
-import { writeOutputToFile } from "../utils/utils.js"
+import { writeOutputToFile } from "../utils/utils.js";
 
 
 

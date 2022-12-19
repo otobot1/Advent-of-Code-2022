@@ -1,5 +1,5 @@
 import fs from "fs";
-import { writeOutputToFile } from "../utils/utils.js";
+import { writeOutputToFile, getIntervalObject } from "../utils/utils.js";
 
 
 
@@ -19,6 +19,12 @@ type Pair = {
 }
 
 
+type Intersections = {
+    minimumXCoordinate: number;
+    maximumXCoordinate: number;
+}
+
+
 
 
 const isTest = false;
@@ -32,6 +38,9 @@ const Y_MAX = isTest ? 100 : 10000000
 const Y_LENGTH = Y_MAX - Y_MIN + 1;
 
 const ANSWER_Y_COORDINATE = isTest ? 10 : 2000000;
+
+
+let startTime = 0;
 
 
 
@@ -54,16 +63,16 @@ const puzzle1 = () => {
     const stringArray = fileContents.split(/\r?\n/);
 
 
+    startTime = (new Date).getTime();
+
+
     const pairs = getPairs(stringArray);
 
 
-    const markedGrid = getMarkedGrid(pairs);
+    const targetRow = getTargetRow(pairs);
 
 
-    printGridToFile(markedGrid);
-
-
-    const markedNodesCount = countMarkedNodesInRow(markedGrid);
+    const markedNodesCount = countMarkedNodesInRow(targetRow);
 
 
     console.log(markedNodesCount);
@@ -113,71 +122,124 @@ const getPairs = (stringArray: string[]): Pair[] => {
 
 
 
-const getMarkedGrid = (pairs: Pair[]): Grid => {
-    const grid: Grid = Array(Y_LENGTH * 2).fill(null).map((): Node[] => Array(X_LENGTH * 2).fill("."));
+const getTargetRow = (pairs: Pair[]): Node[] => {
+    const targetRow: Node[] = Array(X_LENGTH * 2).fill(".");
+    const pairCount = pairs.length;
 
 
-    for (const pair of pairs) {
-        const [sensorXCoordinate, sensorYCoordinate] = pair.sensor;
-        const [beaconXCoordinate, beaconYCoordinate] = pair.beacon;
+    for (let pairIndex = 0; pairIndex < pairCount; pairIndex++) {
+        const pair = pairs[pairIndex];
 
 
-        const maxDistance = Math.abs(sensorXCoordinate - beaconXCoordinate) + Math.abs(sensorYCoordinate - beaconYCoordinate);
+        const intersections = getIntersections(pair);
 
+        if (!intersections) {
+            printProgress(pairIndex + 1, pairCount);
+            continue;
+        }
 
-        for (let currentDistance = 1; currentDistance <= maxDistance; currentDistance++) {      //go around ring clockwise
-            let currentXCoordinate = sensorXCoordinate;
-            let currentYCoordinate = sensorYCoordinate + currentDistance;
-
-
-            while (currentYCoordinate > sensorYCoordinate) {
-                if (grid[currentYCoordinate - Y_MIN][currentXCoordinate - X_MIN] === ".") grid[currentYCoordinate - Y_MIN][currentXCoordinate - X_MIN] = "o";
-
-                currentXCoordinate++;
-                currentYCoordinate--;
-            }
-
-
-            while (currentXCoordinate > sensorXCoordinate) {
-                if (grid[currentYCoordinate - Y_MIN][currentXCoordinate - X_MIN] === ".") grid[currentYCoordinate - Y_MIN][currentXCoordinate - X_MIN] = "o";
-
-                currentXCoordinate--;
-                currentYCoordinate--;
-            }
-
-
-            while (currentYCoordinate < sensorYCoordinate) {
-                if (grid[currentYCoordinate - Y_MIN][currentXCoordinate - X_MIN] === ".") grid[currentYCoordinate - Y_MIN][currentXCoordinate - X_MIN] = "o";
-
-                currentXCoordinate--;
-                currentYCoordinate++;
-            }
-
-
-            while (currentXCoordinate < sensorXCoordinate) {
-                if (grid[currentYCoordinate - Y_MIN][currentXCoordinate - X_MIN] === ".") grid[currentYCoordinate - Y_MIN][currentXCoordinate - X_MIN] = "o";
-
-                currentXCoordinate++;
-                currentYCoordinate++;
+        if (typeof intersections === "number") {
+            if (targetRow[intersections - X_MIN] === ".") targetRow[intersections - X_MIN] = "o";
+        }
+        else {
+            for (let index = intersections.minimumXCoordinate - X_MIN; index <= intersections.maximumXCoordinate - X_MIN; index++) {
+                if (targetRow[index] === ".") targetRow[index] = "o";
             }
         }
 
 
-        grid[sensorYCoordinate - Y_MIN][sensorXCoordinate - X_MIN] = "S";
-        grid[beaconYCoordinate - Y_MIN][beaconXCoordinate - X_MIN] = "B";
+        const [sensorXCoordinate, sensorYCoordinate] = pair.sensor;
+        const [beaconXCoordinate, beaconYCoordinate] = pair.beacon;
+
+        if (sensorYCoordinate === ANSWER_Y_COORDINATE) targetRow[sensorXCoordinate - X_MIN] = "S";
+        if (beaconYCoordinate === ANSWER_Y_COORDINATE) targetRow[beaconXCoordinate - X_MIN] = "B";
+
+
+        printProgress(pairIndex + 1, pairCount);
     }
 
 
-    return grid;
+    return targetRow;
 }
 
 
 
 
-const countMarkedNodesInRow = (grid: Grid): number => {
-    const row = grid[ANSWER_Y_COORDINATE - Y_MIN];
+const getIntersections = (pair: Pair): Intersections | number | null => {
+    const [sensorXCoordinate, sensorYCoordinate] = pair.sensor;
+    const [beaconXCoordinate, beaconYCoordinate] = pair.beacon;
 
 
+    const maxDistance = Math.abs(sensorXCoordinate - beaconXCoordinate) + Math.abs(sensorYCoordinate - beaconYCoordinate);
+
+
+    //go around ring clockwise
+    let minimumXCoordinate: number | undefined;
+    let maximumXCoordinate: number | undefined;
+    let singleSquareOverlapXCoordinate: number | undefined;
+    let currentXCoordinate = sensorXCoordinate;
+    let currentYCoordinate = sensorYCoordinate + maxDistance;
+
+
+    if (currentYCoordinate === ANSWER_Y_COORDINATE) singleSquareOverlapXCoordinate = currentXCoordinate;
+
+    while (currentYCoordinate > sensorYCoordinate) {
+        currentXCoordinate++;
+        currentYCoordinate--;
+
+        if (currentYCoordinate === ANSWER_Y_COORDINATE) maximumXCoordinate = currentXCoordinate;
+    }
+
+
+    while (currentXCoordinate > sensorXCoordinate) {
+        currentXCoordinate--;
+        currentYCoordinate--;
+
+        if (currentYCoordinate === ANSWER_Y_COORDINATE) maximumXCoordinate = currentXCoordinate;
+    }
+
+    if (currentYCoordinate === ANSWER_Y_COORDINATE) singleSquareOverlapXCoordinate = currentXCoordinate;
+
+
+    while (currentYCoordinate < sensorYCoordinate) {
+        currentXCoordinate--;
+        currentYCoordinate++;
+
+        if (currentYCoordinate === ANSWER_Y_COORDINATE) minimumXCoordinate = currentXCoordinate;
+    }
+
+
+    while (currentXCoordinate < sensorXCoordinate) {
+        currentXCoordinate++;
+        currentYCoordinate++;
+
+        if (currentYCoordinate === ANSWER_Y_COORDINATE) minimumXCoordinate = currentXCoordinate;
+    }
+
+
+
+    if (!minimumXCoordinate && !maximumXCoordinate) return null;
+
+    if (!minimumXCoordinate || !maximumXCoordinate || minimumXCoordinate === maximumXCoordinate) {
+        if (singleSquareOverlapXCoordinate) return singleSquareOverlapXCoordinate;
+
+        throw "Only 1 coordinate found.";
+    }
+
+
+    const intersections: Intersections = {
+        maximumXCoordinate: maximumXCoordinate,
+        minimumXCoordinate: minimumXCoordinate,
+    }
+
+
+    return intersections;
+}
+
+
+
+
+const countMarkedNodesInRow = (row: Node[]): number => {
     let count = 0;
 
     for (const node of row) {
@@ -220,4 +282,32 @@ const printGridToFile = (grid: Grid): void => {
 
 
     writeOutputToFile(outputPathString, outputString);
+}
+
+
+
+
+const printProgress = (currentCount: number, totalCount: number): void => {
+    const fractionalCompletion = currentCount / totalCount;
+    const percentCompletion = Math.round(fractionalCompletion * 100);
+
+
+    const currentTime = (new Date).getTime();
+
+    const intervalMilliseconds = currentTime - startTime;
+
+    const estimatedFinalIntervalTime = intervalMilliseconds / currentCount * totalCount;
+
+    const estimatedMillisecondsToCompletion = estimatedFinalIntervalTime - intervalMilliseconds;
+
+
+    const intervalObject = getIntervalObject(estimatedMillisecondsToCompletion);
+
+    let intervalString = (intervalObject.days ? `${intervalObject.days}d` : "");
+    intervalString += (intervalObject.hours ? `${intervalObject.hours}:` : "");
+    intervalString += (intervalObject.minutes ? `${intervalObject.minutes}:` : "");
+    intervalString += `${intervalObject.seconds}${intervalObject.minutes ? "." : "s."}`;
+
+
+    console.log(`${currentCount}/${totalCount} - ${percentCompletion}%. Estimated time to completion: ${intervalString}`);
 }

@@ -18,6 +18,10 @@ type Pair = {
     beacon: Coordinates;
 }
 
+type DetailedPair = {
+    maxDistance: number;
+} & Pair;
+
 
 type Intersections = {
     minimumXCoordinate: number;
@@ -28,13 +32,14 @@ type Intersections = {
 
 
 const isTest = false;
+const isPartTwo = true;
 
-const X_MIN = isTest ? -100 : -1500000;
-const X_MAX = isTest ? 100 : 8500000;
+const X_MIN = isPartTwo ? 0 : (isTest ? -100 : -1500000);
+const X_MAX = isPartTwo ? (isTest ? 20 : 4000000) : (isTest ? 100 : 8500000);
 const X_LENGTH = X_MAX - X_MIN + 1;
 
-const Y_MIN = isTest ? -100 : -2000000;
-const Y_MAX = isTest ? 100 : 10000000
+const Y_MIN = isPartTwo ? 0 : (isTest ? -100 : -2000000);
+const Y_MAX = isPartTwo ? (isTest ? 20 : 4000000) : (isTest ? 100 : 10000000);
 const Y_LENGTH = Y_MAX - Y_MIN + 1;
 
 const ANSWER_Y_COORDINATE = isTest ? 10 : 2000000;
@@ -46,7 +51,7 @@ let startTime = 0;
 
 
 export const main = () => {
-    puzzle1();
+    isPartTwo ? puzzle2() : puzzle1();
 }
 
 
@@ -76,6 +81,32 @@ const puzzle1 = () => {
 
 
     console.log(markedNodesCount);
+}
+
+
+
+
+const puzzle2 = () => {
+    const inputPath = `${process.env.PROJECT_ROOT}/src/day15/${isTest ? "test-" : ""}input.txt`;
+    if (!inputPath) throw "Invalid inputPath";
+
+
+    const fileContents = fs.readFileSync(inputPath, "utf8");
+
+
+    const stringArray = fileContents.split(/\r?\n/);
+
+
+    startTime = (new Date).getTime();
+
+
+    const pairs = getPairs(stringArray);
+
+
+    const tuningFrequency = getTuningFrequency(pairs);
+
+
+    console.log(tuningFrequency);
 }
 
 
@@ -167,10 +198,8 @@ const getTargetRow = (pairs: Pair[]): Node[] => {
 
 const getIntersections = (pair: Pair): Intersections | number | null => {
     const [sensorXCoordinate, sensorYCoordinate] = pair.sensor;
-    const [beaconXCoordinate, beaconYCoordinate] = pair.beacon;
 
-
-    const maxDistance = Math.abs(sensorXCoordinate - beaconXCoordinate) + Math.abs(sensorYCoordinate - beaconYCoordinate);
+    const maxDistance = getMaxDistance(pair);
 
 
     //go around ring clockwise
@@ -304,10 +333,132 @@ const printProgress = (currentCount: number, totalCount: number): void => {
     const intervalObject = getIntervalObject(estimatedMillisecondsToCompletion);
 
     let intervalString = (intervalObject.days ? `${intervalObject.days}d` : "");
-    intervalString += (intervalObject.hours ? `${intervalObject.hours}:` : "");
-    intervalString += (intervalObject.minutes ? `${intervalObject.minutes}:` : "");
+    intervalString += (intervalObject.hours || intervalObject.days ? `${intervalObject.hours}:` : "");
+    intervalString += (intervalObject.minutes || intervalObject.hours || intervalObject.days ? `${intervalObject.minutes}:` : "");
     intervalString += `${intervalObject.seconds}${intervalObject.minutes ? "." : "s."}`;
 
 
     console.log(`${currentCount}/${totalCount} - ${percentCompletion}%. Estimated time to completion: ${intervalString}`);
+}
+
+
+
+
+const getMaxDistance = (pair: Pair): number => {
+    const [sensorXCoordinate, sensorYCoordinate] = pair.sensor;
+    const [beaconXCoordinate, beaconYCoordinate] = pair.beacon;
+
+
+    const maxDistance = Math.abs(sensorXCoordinate - beaconXCoordinate) + Math.abs(sensorYCoordinate - beaconYCoordinate);
+
+
+    return maxDistance;
+}
+
+
+
+
+const getTuningFrequency = (pairs: Pair[]): number => {
+    const detailedPairs = getDetailedPairs(pairs);
+
+
+    const targetCoordinates = getTargetCoordinates(detailedPairs);
+
+
+    const tuningFrequency = (targetCoordinates[0] * 4000000) + targetCoordinates[1];
+
+
+    return tuningFrequency;
+}
+
+
+
+
+const getDetailedPairs = (pairs: Pair[]): DetailedPair[] => {
+    const detailedPairs: DetailedPair[] = [];
+
+
+    for (const pair of pairs) {
+        const maxDistance = getMaxDistance(pair);
+
+
+        const detailedPair = { maxDistance, ...pair };
+
+
+        detailedPairs.push(detailedPair);
+    }
+
+
+    return detailedPairs;
+}
+
+
+
+
+const getTargetCoordinates = (detailedPairs: DetailedPair[]): Coordinates => {
+    for (let xCoordinate = X_MIN; xCoordinate <= X_MAX; xCoordinate++) {
+        for (let yCoordinate = Y_MIN; yCoordinate <= Y_MAX; yCoordinate++) {
+            if (isUntouched(xCoordinate, yCoordinate, detailedPairs)) return [xCoordinate, yCoordinate];
+
+
+            if (yCoordinate % 1000 === 0) printProgress(yCoordinate, (Y_MAX + 1) * (X_MAX + 1));
+        }
+
+
+        if (xCoordinate % 10 === 0) printProgress(xCoordinate, X_MAX + 1);
+    }
+
+
+    throw "Unable to find targetCoordinates.";
+}
+
+
+
+
+const isUntouched = (xCoordinate: number, yCoordinate: number, detailedPairs: DetailedPair[]): boolean => {
+    for (const detailedPair of detailedPairs) {
+        const [sensorXCoordinate, sensorYCoordinate] = detailedPair.sensor;
+        const maxDistance = detailedPair.maxDistance;
+
+
+        if (
+            xCoordinate > sensorXCoordinate + maxDistance || xCoordinate < sensorXCoordinate - maxDistance ||
+            yCoordinate > sensorYCoordinate + maxDistance || yCoordinate < sensorYCoordinate - maxDistance
+        ) continue;
+
+
+        let currentXCoordinate = sensorXCoordinate;
+        let currentYCoordinate = sensorYCoordinate + maxDistance;
+
+        while (currentYCoordinate > sensorYCoordinate) {
+            if (currentXCoordinate === xCoordinate && yCoordinate >= sensorYCoordinate && yCoordinate <= currentYCoordinate) return false;
+
+            currentXCoordinate++;
+            currentYCoordinate--;
+        }
+
+        while (currentXCoordinate > sensorXCoordinate) {
+            if (currentXCoordinate === xCoordinate && yCoordinate <= sensorYCoordinate && yCoordinate >= currentYCoordinate) return false;
+
+            currentXCoordinate--;
+            currentYCoordinate--;
+        }
+
+        while (currentYCoordinate < sensorYCoordinate) {
+            if (currentXCoordinate === xCoordinate && yCoordinate <= sensorYCoordinate && yCoordinate >= currentYCoordinate) return false;
+
+            currentXCoordinate--;
+            currentYCoordinate++;
+        }
+
+        while (currentXCoordinate < sensorXCoordinate) {
+            if (currentXCoordinate === xCoordinate && yCoordinate >= sensorYCoordinate && yCoordinate <= currentYCoordinate) return false;
+
+            currentXCoordinate++;
+            currentYCoordinate++;
+        }
+    }
+
+
+    return true;
 }

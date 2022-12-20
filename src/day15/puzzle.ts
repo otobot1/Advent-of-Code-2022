@@ -29,6 +29,13 @@ type Intersections = {
 }
 
 
+type CheckedCoordinates = {
+    [index: string]: boolean;
+}
+
+const checkedCoordinates: CheckedCoordinates = {};
+
+
 
 
 const isTest = false;
@@ -396,16 +403,45 @@ const getDetailedPairs = (pairs: Pair[]): DetailedPair[] => {
 
 
 const getTargetCoordinates = (detailedPairs: DetailedPair[]): Coordinates => {
-    for (let xCoordinate = X_MIN; xCoordinate <= X_MAX; xCoordinate++) {
-        for (let yCoordinate = Y_MIN; yCoordinate <= Y_MAX; yCoordinate++) {
-            if (isUntouched(xCoordinate, yCoordinate, detailedPairs)) return [xCoordinate, yCoordinate];
+    for (let outerPairIndex = 0; outerPairIndex < detailedPairs.length; outerPairIndex++) {
+        const outerDetailedPair = detailedPairs[outerPairIndex];
+        const [outerSensorXCoordinate, outerSensorYCoordinate] = outerDetailedPair.sensor;
+        const outerMaxDistance = outerDetailedPair.maxDistance;
 
 
-            if (yCoordinate % 1000 === 0) printProgress(yCoordinate, (Y_MAX + 1) * (X_MAX + 1));
+        let currentXCoordinate = outerSensorXCoordinate;
+        let currentYCoordinate = outerSensorYCoordinate + outerMaxDistance + 1;
+
+        while (currentYCoordinate > outerSensorYCoordinate) {
+            if (isUntouched(currentXCoordinate, currentYCoordinate, outerDetailedPair, detailedPairs)) return [currentXCoordinate, currentYCoordinate];
+
+            currentXCoordinate++;
+            currentYCoordinate--;
+        }
+
+        while (currentXCoordinate > outerSensorXCoordinate) {
+            if (isUntouched(currentXCoordinate, currentYCoordinate, outerDetailedPair, detailedPairs)) return [currentXCoordinate, currentYCoordinate];
+
+            currentXCoordinate--;
+            currentYCoordinate--;
+        }
+
+        while (currentYCoordinate < outerSensorYCoordinate) {
+            if (isUntouched(currentXCoordinate, currentYCoordinate, outerDetailedPair, detailedPairs)) return [currentXCoordinate, currentYCoordinate];
+
+            currentXCoordinate--;
+            currentYCoordinate++;
+        }
+
+        while (currentXCoordinate < outerSensorXCoordinate) {
+            if (isUntouched(currentXCoordinate, currentYCoordinate, outerDetailedPair, detailedPairs)) return [currentXCoordinate, currentYCoordinate];
+
+            currentXCoordinate++;
+            currentYCoordinate++;
         }
 
 
-        if (xCoordinate % 10 === 0) printProgress(xCoordinate, X_MAX + 1);
+        printProgress(outerPairIndex + 1, detailedPairs.length);
     }
 
 
@@ -415,50 +451,40 @@ const getTargetCoordinates = (detailedPairs: DetailedPair[]): Coordinates => {
 
 
 
-const isUntouched = (xCoordinate: number, yCoordinate: number, detailedPairs: DetailedPair[]): boolean => {
-    for (const detailedPair of detailedPairs) {
-        const [sensorXCoordinate, sensorYCoordinate] = detailedPair.sensor;
-        const maxDistance = detailedPair.maxDistance;
+const isUntouched = (xCoordinate: number, yCoordinate: number, outerDetailedPair: DetailedPair, detailedPairs: DetailedPair[]): boolean => {
+    if (xCoordinate < X_MIN || xCoordinate > X_MAX || yCoordinate < Y_MIN || yCoordinate > Y_MAX || checkedCoordinates[getCoordinatesString(xCoordinate, yCoordinate)]) return false;
+
+
+    for (const innerDetailedPair of detailedPairs) {
+        if (innerDetailedPair === outerDetailedPair) continue;
+
+
+        const [innerSensorXCoordinate, innerSensorYCoordinate] = innerDetailedPair.sensor;
+        const innerMaxDistance = innerDetailedPair.maxDistance;
 
 
         if (
-            xCoordinate > sensorXCoordinate + maxDistance || xCoordinate < sensorXCoordinate - maxDistance ||
-            yCoordinate > sensorYCoordinate + maxDistance || yCoordinate < sensorYCoordinate - maxDistance
+            xCoordinate > innerSensorXCoordinate + innerMaxDistance || xCoordinate < innerSensorXCoordinate - innerMaxDistance ||
+            yCoordinate > innerSensorYCoordinate + innerMaxDistance || yCoordinate < innerSensorYCoordinate - innerMaxDistance
         ) continue;
 
 
-        let currentXCoordinate = sensorXCoordinate;
-        let currentYCoordinate = sensorYCoordinate + maxDistance;
+        const distance = Math.abs(xCoordinate - innerSensorXCoordinate) + Math.abs(yCoordinate - innerSensorYCoordinate);
 
-        while (currentYCoordinate > sensorYCoordinate) {
-            if (currentXCoordinate === xCoordinate && yCoordinate >= sensorYCoordinate && yCoordinate <= currentYCoordinate) return false;
 
-            currentXCoordinate++;
-            currentYCoordinate--;
-        }
-
-        while (currentXCoordinate > sensorXCoordinate) {
-            if (currentXCoordinate === xCoordinate && yCoordinate <= sensorYCoordinate && yCoordinate >= currentYCoordinate) return false;
-
-            currentXCoordinate--;
-            currentYCoordinate--;
-        }
-
-        while (currentYCoordinate < sensorYCoordinate) {
-            if (currentXCoordinate === xCoordinate && yCoordinate <= sensorYCoordinate && yCoordinate >= currentYCoordinate) return false;
-
-            currentXCoordinate--;
-            currentYCoordinate++;
-        }
-
-        while (currentXCoordinate < sensorXCoordinate) {
-            if (currentXCoordinate === xCoordinate && yCoordinate >= sensorYCoordinate && yCoordinate <= currentYCoordinate) return false;
-
-            currentXCoordinate++;
-            currentYCoordinate++;
+        if (distance <= innerMaxDistance) {
+            checkedCoordinates[getCoordinatesString(xCoordinate, yCoordinate)] = true;
+            return false;
         }
     }
 
 
     return true;
+}
+
+
+
+
+const getCoordinatesString = (xCoordinate: number, yCoordinate: number): string => {
+    return `[${xCoordinate}, ${yCoordinate}]`;
 }

@@ -135,6 +135,9 @@ const getPressureRelease = (currentValve: Valve, oldMovesList: string[], oldPres
     const { namesList, valveCollection } = valveInfo;
     const distanceRow = valveDistanceMatrix[currentValve.index];
 
+    
+    const breakpoint = (depth === 1 && currentValve.name === "DD");
+
 
     let currentPressureRelease = oldPressureRelease;
 
@@ -145,12 +148,19 @@ const getPressureRelease = (currentValve: Valve, oldMovesList: string[], oldPres
 
         if (valve === currentValve || oldMovesList.includes(valveName)) continue;
 
+        if (valve.flowRate === 0) {
+            oldMovesList = [...oldMovesList, valveName];
+            continue;
+        }
+
 
         const newMovesList = [...oldMovesList, valveName];
 
         const distance = distanceRow[valve.index];
 
         const newMinutesRemaining = oldMinutesRemaining - distance - 1;
+
+        if (newMinutesRemaining < 0) continue;
 
 
         let newPressureRelease = oldPressureRelease + (valve.flowRate * newMinutesRemaining);

@@ -25,8 +25,11 @@ type ValveInfo = {
 
 
 
-const isTest = false;
+const isTest = true;
 const isPartTwo = false;
+
+
+const openValveString = "open";
 
 
 
@@ -55,7 +58,10 @@ const puzzle1 = () => {
     const optimalValveOrder = getOptimalValveOrder(valveInfo);
 
 
-    const maximumPressureRelease = getMaximumPressureRelease(optimalValveOrder, valveInfo.valveCollection);
+    const optimalPath = getOptimalPath(optimalValveOrder, valveInfo.valveCollection);
+
+
+    const maximumPressureRelease = getMaximumPressureRelease(optimalPath, valveInfo.valveCollection);
 
 
     console.log(maximumPressureRelease);
@@ -84,7 +90,7 @@ const getValveCollection = (stringArray: string[]): ValveInfo => {
 
 
     for (const string of stringArray) {
-        const name = string.slice("Valve ".length + 1, "Valve AA ".length);
+        const name = string.slice("Valve ".length, "Valve AA".length);
 
 
         const [firstHalf, secondHalf] = string.split("; ");
@@ -98,12 +104,12 @@ const getValveCollection = (stringArray: string[]): ValveInfo => {
         const neighbours = secondHalf.split("valve")[1].slice(1).trim().split(", ");
 
 
-        namesList.push(name);
-
-
         const valve: Valve = { name, index: namesList.length, flowRate, neighbours };
 
         valveCollection[name] = valve;
+
+
+        namesList.push(name);
     }
 
 
@@ -115,12 +121,24 @@ const getValveCollection = (stringArray: string[]): ValveInfo => {
 
 
 
-//@ts-ignore
+
 const getOptimalValveOrder = (valveInfo: ValveInfo): string[] => {
     const valveDistanceMatrix = getValveDistanceMatrix(valveInfo);
-    outputMatrixToFile("output", valveDistanceMatrix);
 
-    throw "not done"
+
+    const startingValve = valveInfo.valveCollection["AA"];
+
+    const optimalValveOrder: string[] = getRemainingMoves(startingValve, [], valveInfo, valveDistanceMatrix);
+
+
+    return optimalValveOrder;
+}
+
+
+
+
+const getRemainingMoves = (currentValve: Valve, oldMovesList: string[], valveInfo: ValveInfo, valveDistanceMatrix: number[][]): string[] => {
+    const { namesList, valveCollection } = valveInfo;
 }
 
 
@@ -130,7 +148,7 @@ const getValveDistanceMatrix = (valveInfo: ValveInfo): number[][] => {
     const { namesList } = valveInfo;
 
 
-    const valveDistanceMatrix: number[][] = namesList.map((valveName) => getMatrixRow(valveName, valveInfo));
+    const valveDistanceMatrix: number[][] = namesList.map(valveName => getMatrixRow(valveName, valveInfo));
 
 
     return valveDistanceMatrix;
@@ -146,19 +164,9 @@ const getMatrixRow = (originValveName: string, valveInfo: ValveInfo): number[] =
     if (!originValve) throw "originValve is undefined.";
 
 
-    const matrixRow: number[] = [];
+    const matrixRow: number[] = Array(namesList.length);
 
-    for (const valveName of namesList) {
-        if (valveName === originValve.name) {
-            matrixRow.push(0);
-            continue;
-        }
-
-
-        const valve = valveCollection[valveName];
-
-        if (!matrixRow[valve.index]) getDepth(originValve, 0, valveCollection, matrixRow);
-    }
+    getDepth(originValve, 0, valveCollection, matrixRow);
 
 
     return matrixRow;
@@ -176,34 +184,82 @@ const getDepth = (currentValve: Valve, currentDepth: number, valveCollection: Va
 
         if (!neighbour) throw "neighbour is undefined.";
 
-        
-        if (!matrixRow[neighbour.index]) getDepth(neighbour, currentDepth + 1, valveCollection, matrixRow);
+
+        if (matrixRow[neighbour.index] === undefined) getDepth(neighbour, currentDepth + 1, valveCollection, matrixRow);
     }
 }
 
 
 
 
-const getMaximumPressureRelease = (optimalValveOrder: string[], valveCollection: ValveCollection): number => {
+const getOptimalPath = (optimalValveOrder: string[], valveCollection: ValveCollection): string[] => {
+    const optimalPath: string[] = [];
+
+
+    let currentLocationName = "AA";
+    let currentValve = valveCollection[currentLocationName];
+
+    if (!currentValve) throw "currentValve is undefined.";
+
+    for (const nextValveName of optimalValveOrder) {
+        const pathSegment = getPathSegment(currentValve, nextValveName, valveCollection, []);
+
+        if (!pathSegment) throw "pathSegment is undefined.";
+
+
+        optimalPath.push(...pathSegment);
+    }
+
+
+    return optimalPath;
+}
+
+
+
+
+const getPathSegment = (currentValve: Valve, targetValveName: string, valveCollection: ValveCollection, oldPathSegment: string[]): string[] | void => {
+    const currentPathSegment = [...oldPathSegment, currentValve.name];
+
+
+    for (const neighbourName of currentValve.neighbours) {
+        if (neighbourName === targetValveName) return [...currentPathSegment, targetValveName, openValveString];
+    }
+
+
+    for (const neighbourName of currentValve.neighbours) {
+        const neighbour = valveCollection[neighbourName];
+
+
+        const newPathSegment = getPathSegment(neighbour, targetValveName, valveCollection, currentPathSegment);
+
+        if (newPathSegment) return newPathSegment;
+    }
+}
+
+
+
+
+const getMaximumPressureRelease = (optimalPath: string[], valveCollection: ValveCollection): number => {
     let minutesRemaining = 30;
-    let currentLocation = "AA";
+    let previousLocationName: string | undefined;
     let maximumPressureRelease = 0;
 
 
-    for (const nextValveName of optimalValveOrder) {
-        const nextValve = valveCollection[nextValveName];
-        if (!nextValve) throw "nextValve is undefined.";
-
-
-        while (currentLocation !== nextValveName) {
-            minutesRemaining--;
-        }
-
-
+    for (const nextStep of optimalPath) {
         minutesRemaining--;
 
 
-        maximumPressureRelease += nextValve.flowRate * minutesRemaining;
+        if (nextStep !== openValveString) {
+            previousLocationName = nextStep;
+            continue;
+        }
+
+
+        if (!previousLocationName) throw "previousLocationName is undefined.";
+
+        const valve = valveCollection[previousLocationName]
+
+        maximumPressureRelease += valve.flowRate * minutesRemaining;
     }
 
 

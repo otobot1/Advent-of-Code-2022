@@ -161,18 +161,14 @@ const getPressureRelease = (currentValve: Valve, oldMovesList: string[], oldPres
         if (newPressureRelease > currentPressureRelease) currentPressureRelease = newPressureRelease;
 
 
-        outputStringArray.push(`currentPressureRelease = ${currentPressureRelease}. newMovesList = ${newMovesList}`);
+        outputStringArray.push(`${newPressureRelease} ${newMovesList.join(" ")}`);
     }
 
 
     if (!depth) {
-        for (let stringIndex = 0; stringIndex < outputStringArray.length + 99; stringIndex += 100) {
-            const subArray: string[] = [];
+        console.log("starting print")
 
-            for (let subIndex = stringIndex; subIndex < stringIndex + 100 && subIndex < outputStringArray.length; subIndex++) subArray.push(outputStringArray[subIndex]);
-
-            fs.writeFileSync(`${process.env.PROJECT_ROOT}/src/day16/output.txt`, `\r\n${subArray.join("\r\n")}`, { flag: "w" });
-        }
+        writeOutputToFile(`${process.env.PROJECT_ROOT}/src/day16/output.txt`, outputStringArray.join("\r\n"));
     }
 
 

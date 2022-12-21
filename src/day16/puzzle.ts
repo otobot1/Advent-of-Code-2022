@@ -1,10 +1,12 @@
 import fs from "fs";
+import { outputMatrixToFile } from "../utils/utils.js";
 
 
 
 
 type Valve = {
     name: string;
+    index: number;
     flowRate: number;
     neighbours: string[];
 }
@@ -24,7 +26,7 @@ type ValveInfo = {
 
 
 const isTest = false;
-const isPartTwo = true;
+const isPartTwo = false;
 
 
 
@@ -96,11 +98,12 @@ const getValveCollection = (stringArray: string[]): ValveInfo => {
         const neighbours = secondHalf.split("valve")[1].slice(1).trim().split(", ");
 
 
-        const valve: Valve = { name, flowRate, neighbours };
+        namesList.push(name);
 
+
+        const valve: Valve = { name, index: namesList.length, flowRate, neighbours };
 
         valveCollection[name] = valve;
-        namesList.push(name);
     }
 
 
@@ -112,9 +115,12 @@ const getValveCollection = (stringArray: string[]): ValveInfo => {
 
 
 
-
+//@ts-ignore
 const getOptimalValveOrder = (valveInfo: ValveInfo): string[] => {
+    const valveDistanceMatrix = getValveDistanceMatrix(valveInfo);
+    outputMatrixToFile("output", valveDistanceMatrix);
 
+    throw "not done"
 }
 
 
@@ -122,7 +128,7 @@ const getOptimalValveOrder = (valveInfo: ValveInfo): string[] => {
 
 const getValveDistanceMatrix = (valveInfo: ValveInfo): number[][] => {
     const { namesList } = valveInfo;
-    
+
 
     const valveDistanceMatrix: number[][] = namesList.map((valveName) => getMatrixRow(valveName, valveInfo));
 
@@ -140,7 +146,19 @@ const getMatrixRow = (originValveName: string, valveInfo: ValveInfo): number[] =
     if (!originValve) throw "originValve is undefined.";
 
 
-    const matrixRow: number[] = namesList.map((valveName) => getDepth(valveName, originValve, 0, valveCollection));
+    const matrixRow: number[] = [];
+
+    for (const valveName of namesList) {
+        if (valveName === originValve.name) {
+            matrixRow.push(0);
+            continue;
+        }
+
+
+        const valve = valveCollection[valveName];
+
+        if (!matrixRow[valve.index]) getDepth(originValve, 0, valveCollection, matrixRow);
+    }
 
 
     return matrixRow;
@@ -149,8 +167,18 @@ const getMatrixRow = (originValveName: string, valveInfo: ValveInfo): number[] =
 
 
 
-const getDepth = (targetValveName: string, currentValve: Valve, currentDepth: number, valveCollection: ValveCollection): number => {
+const getDepth = (currentValve: Valve, currentDepth: number, valveCollection: ValveCollection, matrixRow: number[]): void => {
+    matrixRow[currentValve.index] = currentDepth;
 
+
+    for (const neighbourName of currentValve.neighbours) {
+        const neighbour = valveCollection[neighbourName];
+
+        if (!neighbour) throw "neighbour is undefined.";
+
+        
+        if (!matrixRow[neighbour.index]) getDepth(neighbour, currentDepth + 1, valveCollection, matrixRow);
+    }
 }
 
 

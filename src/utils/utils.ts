@@ -3,7 +3,7 @@ import fs from "fs";
 
 
 
-export const writeOutputToFile = (outputFilePath: string, outputString: string, maxFileIndex = 10, fileIndex = 0) => {
+export const writeOutputToFile = (outputFilePath: string, outputString: string, maxFileIndex = 10, fileIndex = 0): void => {
     try {
         if (outputFilePath.endsWith(".txt")) outputFilePath = outputFilePath.slice(0, outputFilePath.length - ".txt".length);
 
@@ -24,6 +24,30 @@ export const writeOutputToFile = (outputFilePath: string, outputString: string, 
         }
         else throw "maxFileIndex reached";
     }
+}
+
+
+
+
+export const outputMatrixToFile = (outputFilePath: string, outputMatrix: unknown[][], maxFileIndex = 10, fileIndex = 0): void => {
+    const outputStringArray: string[] = [];
+
+
+    for (const row of outputMatrix) {
+        const rowStringArray: string[] = [];
+
+
+        for (const cell of row) rowStringArray.push(String(cell));
+
+
+        outputStringArray.push(rowStringArray.join(""));
+    }
+
+
+    const outputString = outputStringArray.join("\r\n");
+
+
+    writeOutputToFile(outputFilePath, outputString, maxFileIndex, fileIndex);
 }
 
 

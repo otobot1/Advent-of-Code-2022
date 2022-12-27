@@ -1,5 +1,5 @@
 import fs from "fs";
-import { writeOutputToFile } from "../utils/utils.js";
+// import { outputMatrixToFile, writeOutputToFile } from "../utils/utils.js";
 
 
 
@@ -26,7 +26,23 @@ type ValveInfo = {
 
 
 const isTest = true;
-const isPartTwo = false;
+const isPartTwo = true;
+
+
+
+
+// const testMatrix = [
+//     [0, 1, 2, 1, 2, 3, 4, 5, 1, 2],
+//     [1, 0, 1, 2, 3, 4, 5, 6, 2, 3],
+//     [2, 1, 0, 1, 2, 3, 4, 5, 3, 4],
+//     [1, 2, 1, 0, 1, 2, 3, 4, 2, 3],
+//     [2, 3, 2, 1, 0, 1, 2, 3, 3, 4],
+//     [3, 4, 3, 2, 1, 0, 1, 2, 4, 5],
+//     [4, 5, 4, 3, 2, 1, 0, 1, 5, 6],
+//     [5, 6, 5, 4, 3, 2, 1, 0, 6, 7],
+//     [1, 2, 3, 2, 3, 4, 5, 6, 0, 1],
+//     [2, 3, 4, 3, 4, 5, 6, 7, 1, 0],
+// ]
 
 
 // const openValveString = "open";
@@ -35,13 +51,13 @@ const isPartTwo = false;
 
 
 export const main = () => {
-    isPartTwo ? puzzle2() : puzzle1();
+    puzzle();
 }
 
 
 
 
-const puzzle1 = () => {
+const puzzle = () => {
     const inputPath = `${process.env.PROJECT_ROOT}/src/day16/${isTest ? "test-" : ""}input.txt`;
     if (!inputPath) throw "Invalid inputPath";
 
@@ -119,10 +135,24 @@ const getValveCollection = (stringArray: string[]): ValveInfo => {
 const getMaximumPressureRelease = (valveInfo: ValveInfo): number => {
     const valveDistanceMatrix = getValveDistanceMatrix(valveInfo);
 
+    // outputMatrixToFile(`${process.env.PROJECT_ROOT}/src/day16/matrix-output.txt`, valveDistanceMatrix);
+    // throw "";
 
-    const startingValve = valveInfo.valveCollection["AA"];
 
-    const maximumPressureRelease: number = getPressureRelease(startingValve, [], 0, 30, valveInfo, valveDistanceMatrix, 0, []);
+    const { namesList, valveCollection } = valveInfo;
+    const startingValve = valveCollection["AA"];
+
+    let maximumPressureRelease: number;
+
+    if (isPartTwo) {
+        const highestPressure: [number] = [0];
+
+        getPressureWithElephant(startingValve, [], [], highestPressure, namesList, valveCollection, valveDistanceMatrix)
+
+        maximumPressureRelease = highestPressure[0];
+    } else {
+        maximumPressureRelease = getPressureRelease(startingValve, [], 0, 30, namesList, valveCollection, valveDistanceMatrix);
+    }
 
 
     return maximumPressureRelease;
@@ -131,12 +161,53 @@ const getMaximumPressureRelease = (valveInfo: ValveInfo): number => {
 
 
 
-const getPressureRelease = (currentValve: Valve, oldMovesList: string[], oldPressureRelease: number, oldMinutesRemaining: number, valveInfo: ValveInfo, valveDistanceMatrix: number[][], depth: number, outputStringArray: string[]): number => {
-    const { namesList, valveCollection } = valveInfo;
+const getPressureWithElephant = (startingValve: Valve, oldElephantMovesList: string[], oldKeptValvesList: string[], highestPressure: [number], oldNamesList: string[], valveCollection: ValveCollection, valveDistanceMatrix: number[][]): void => {
+    for (let index = 0; index < oldNamesList.length; index++) {
+        const currentValveName = oldNamesList[index];
+
+        if (valveCollection[currentValveName].flowRate === 0) continue;
+
+        for (const valveName of oldElephantMovesList) if (valveName === currentValveName) continue;
+
+        for (const valveName of oldKeptValvesList) if (valveName === currentValveName) continue;
+
+
+        const newNamesList = [...oldNamesList.slice(0, index), ...oldNamesList.slice(index + 1)];
+        const newElephantMovesList = [...oldElephantMovesList, currentValveName];
+        const newKeptValvesList = [...oldKeptValvesList, currentValveName];
+
+
+        //elephant gets the new valve
+        let myValue = getPressureRelease(startingValve, [], 0, 26, newNamesList, valveCollection, valveDistanceMatrix);
+        let elephantValue = getPressureRelease(startingValve, [], 0, 26, newElephantMovesList, valveCollection, valveDistanceMatrix);
+
+        let newPressureRelease = myValue + elephantValue;
+        if (newPressureRelease > highestPressure[0]) highestPressure[0] = newPressureRelease;
+
+        //wrap recursive call in setTimeout so garbage collector can clear out the stack
+        setTimeout(() => getPressureWithElephant(startingValve, newElephantMovesList, oldKeptValvesList, highestPressure, newNamesList, valveCollection, valveDistanceMatrix), 0);
+
+
+        //i keep new valve
+        myValue = getPressureRelease(startingValve, [], 0, 26, oldNamesList, valveCollection, valveDistanceMatrix);
+        elephantValue = getPressureRelease(startingValve, [], 0, 26, oldElephantMovesList, valveCollection, valveDistanceMatrix);
+
+        newPressureRelease = myValue + elephantValue;
+        if (newPressureRelease > highestPressure[0]) highestPressure[0] = newPressureRelease;
+
+        //wrap recursive call in setTimeout so garbage collector can clear out the stack
+        setTimeout(() => getPressureWithElephant(startingValve, oldElephantMovesList, newKeptValvesList, highestPressure, oldNamesList, valveCollection, valveDistanceMatrix), 0);
+    }
+}
+
+
+
+
+const getPressureRelease = (currentValve: Valve, oldMovesList: string[], oldPressureRelease: number, oldMinutesRemaining: number, namesList: string[], valveCollection: ValveCollection, valveDistanceMatrix: number[][]): number => {
     const distanceRow = valveDistanceMatrix[currentValve.index];
 
-    
-    const breakpoint = (depth === 1 && currentValve.name === "DD");
+
+    // const breakpoint = (depth === 1 && currentValve.name === "DD");
 
 
     let currentPressureRelease = oldPressureRelease;
@@ -165,20 +236,10 @@ const getPressureRelease = (currentValve: Valve, oldMovesList: string[], oldPres
 
         let newPressureRelease = oldPressureRelease + (valve.flowRate * newMinutesRemaining);
 
-        newPressureRelease = getPressureRelease(valve, newMovesList, newPressureRelease, newMinutesRemaining, valveInfo, valveDistanceMatrix, depth + 1, outputStringArray);
+        newPressureRelease = getPressureRelease(valve, newMovesList, newPressureRelease, newMinutesRemaining, namesList, valveCollection, valveDistanceMatrix);
 
 
         if (newPressureRelease > currentPressureRelease) currentPressureRelease = newPressureRelease;
-
-
-        outputStringArray.push(`${newPressureRelease} ${newMovesList.join(" ")}`);
-    }
-
-
-    if (!depth) {
-        console.log("starting print")
-
-        writeOutputToFile(`${process.env.PROJECT_ROOT}/src/day16/output.txt`, outputStringArray.join("\r\n"));
     }
 
 
@@ -229,7 +290,7 @@ const getDepth = (currentValve: Valve, currentDepth: number, valveCollection: Va
         if (!neighbour) throw "neighbour is undefined.";
 
 
-        if (matrixRow[neighbour.index] === undefined) getDepth(neighbour, currentDepth + 1, valveCollection, matrixRow);
+        if (matrixRow[neighbour.index] === undefined || matrixRow[neighbour.index] > currentDepth + 1) getDepth(neighbour, currentDepth + 1, valveCollection, matrixRow);
     }
 }
 

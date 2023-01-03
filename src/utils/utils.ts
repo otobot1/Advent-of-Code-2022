@@ -96,7 +96,12 @@ export const getIntervalObject = (milliseconds: number): IntervalObject => {
 
 
 
-export const printProgress = (currentCount: number, totalCount: number, startTime: number): void => {
+export const printProgress = (currentCount: number, totalCount: number | bigint, startTime: number): void => {
+    if (totalCount > Number.MAX_SAFE_INTEGER) throw "totalCount is too large!";
+
+    totalCount = Number(totalCount);
+
+
     const fractionalCompletion = currentCount / totalCount;
     const percentCompletion = Math.round(fractionalCompletion * 100);
 
@@ -112,11 +117,44 @@ export const printProgress = (currentCount: number, totalCount: number, startTim
 
     const intervalObject = getIntervalObject(estimatedMillisecondsToCompletion);
 
-    let intervalString = (intervalObject.days ? `${intervalObject.days}d` : "");
-    intervalString += (intervalObject.hours || intervalObject.days ? `${intervalObject.hours}:` : "");
-    intervalString += (intervalObject.minutes || intervalObject.hours || intervalObject.days ? `${intervalObject.minutes}:` : "");
-    intervalString += `${intervalObject.seconds}${intervalObject.minutes ? "." : "s."}`;
+    let intervalString = (intervalObject.days ? `${intervalObject.days}d ` : "");
+    intervalString += (intervalObject.hours || intervalObject.days ? (intervalObject.hours && intervalObject.hours >= 10 ? `${intervalObject.hours}:` : `0${intervalObject.hours}`) : "");
+    intervalString += (intervalObject.minutes || intervalObject.hours || intervalObject.days ? (intervalObject.minutes && intervalObject.minutes >= 10 ? `${intervalObject.minutes}:` : `0${intervalObject.minutes}`) : "");
+    intervalString += `${intervalObject.seconds >= 10 ? intervalObject.seconds : `0${intervalObject.seconds}`}${intervalObject.minutes ? "." : "s."}`;
 
 
     console.log(`${currentCount}/${totalCount} - ${percentCompletion}%. Estimated time to completion: ${intervalString}`);
+}
+
+
+
+
+export const factorial = (n: number): bigint => {
+    let rval = 1n;
+
+    for (let i = 2n; i <= n; i++)
+        rval = rval * i;
+
+    return rval;
+}
+
+
+export const nChooseK = (n: number, k: number): bigint => {
+    const nFactorial = factorial(n);
+    const kFactorial = factorial(k);
+    
+    return nFactorial / (kFactorial * factorial(n-k));
+}
+
+
+export const countUniqueCombinationsOfListElements = (list: unknown[]): bigint => {
+    const n = list.length;
+
+
+    let sum = 0n;
+
+    for (let k = 1; k < n; k++) sum += nChooseK(n, k);
+
+
+    return sum;
 }

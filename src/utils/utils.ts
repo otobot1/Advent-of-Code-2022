@@ -92,3 +92,31 @@ export const getIntervalObject = (milliseconds: number): IntervalObject => {
 
     return intervalObject;
 }
+
+
+
+
+export const printProgress = (currentCount: number, totalCount: number, startTime: number): void => {
+    const fractionalCompletion = currentCount / totalCount;
+    const percentCompletion = Math.round(fractionalCompletion * 100);
+
+
+    const currentTime = (new Date).getTime();
+
+    const intervalMilliseconds = currentTime - startTime;
+
+    const estimatedFinalIntervalTime = intervalMilliseconds / currentCount * totalCount;
+
+    const estimatedMillisecondsToCompletion = estimatedFinalIntervalTime - intervalMilliseconds;
+
+
+    const intervalObject = getIntervalObject(estimatedMillisecondsToCompletion);
+
+    let intervalString = (intervalObject.days ? `${intervalObject.days}d` : "");
+    intervalString += (intervalObject.hours || intervalObject.days ? `${intervalObject.hours}:` : "");
+    intervalString += (intervalObject.minutes || intervalObject.hours || intervalObject.days ? `${intervalObject.minutes}:` : "");
+    intervalString += `${intervalObject.seconds}${intervalObject.minutes ? "." : "s."}`;
+
+
+    console.log(`${currentCount}/${totalCount} - ${percentCompletion}%. Estimated time to completion: ${intervalString}`);
+}

@@ -1,5 +1,5 @@
 import fs from "fs";
-import { writeOutputToFile, getIntervalObject } from "../utils/utils.js";
+import { writeOutputToFile, printProgress } from "../utils/utils.js";
 
 
 
@@ -172,7 +172,7 @@ const getTargetRow = (pairs: Pair[]): Node[] => {
         const intersections = getIntersections(pair);
 
         if (!intersections) {
-            printProgress(pairIndex + 1, pairCount);
+            printProgress(pairIndex + 1, pairCount, startTime);
             continue;
         }
 
@@ -193,7 +193,7 @@ const getTargetRow = (pairs: Pair[]): Node[] => {
         if (beaconYCoordinate === ANSWER_Y_COORDINATE) targetRow[beaconXCoordinate - X_MIN] = "B";
 
 
-        printProgress(pairIndex + 1, pairCount);
+        printProgress(pairIndex + 1, pairCount, startTime);
     }
 
 
@@ -323,34 +323,6 @@ const printGridToFile = (grid: Grid): void => {
 
 
 
-const printProgress = (currentCount: number, totalCount: number): void => {
-    const fractionalCompletion = currentCount / totalCount;
-    const percentCompletion = Math.round(fractionalCompletion * 100);
-
-
-    const currentTime = (new Date).getTime();
-
-    const intervalMilliseconds = currentTime - startTime;
-
-    const estimatedFinalIntervalTime = intervalMilliseconds / currentCount * totalCount;
-
-    const estimatedMillisecondsToCompletion = estimatedFinalIntervalTime - intervalMilliseconds;
-
-
-    const intervalObject = getIntervalObject(estimatedMillisecondsToCompletion);
-
-    let intervalString = (intervalObject.days ? `${intervalObject.days}d` : "");
-    intervalString += (intervalObject.hours || intervalObject.days ? `${intervalObject.hours}:` : "");
-    intervalString += (intervalObject.minutes || intervalObject.hours || intervalObject.days ? `${intervalObject.minutes}:` : "");
-    intervalString += `${intervalObject.seconds}${intervalObject.minutes ? "." : "s."}`;
-
-
-    console.log(`${currentCount}/${totalCount} - ${percentCompletion}%. Estimated time to completion: ${intervalString}`);
-}
-
-
-
-
 const getMaxDistance = (pair: Pair): number => {
     const [sensorXCoordinate, sensorYCoordinate] = pair.sensor;
     const [beaconXCoordinate, beaconYCoordinate] = pair.beacon;
@@ -441,7 +413,7 @@ const getTargetCoordinates = (detailedPairs: DetailedPair[]): Coordinates => {
         }
 
 
-        printProgress(outerPairIndex + 1, detailedPairs.length);
+        printProgress(outerPairIndex + 1, detailedPairs.length, startTime);
     }
 
 

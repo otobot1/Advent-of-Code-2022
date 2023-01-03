@@ -118,8 +118,8 @@ export const printProgress = (currentCount: number, totalCount: number | bigint,
     const intervalObject = getIntervalObject(estimatedMillisecondsToCompletion);
 
     let intervalString = (intervalObject.days ? `${intervalObject.days}d ` : "");
-    intervalString += (intervalObject.hours || intervalObject.days ? (intervalObject.hours && intervalObject.hours >= 10 ? `${intervalObject.hours}:` : `0${intervalObject.hours}`) : "");
-    intervalString += (intervalObject.minutes || intervalObject.hours || intervalObject.days ? (intervalObject.minutes && intervalObject.minutes >= 10 ? `${intervalObject.minutes}:` : `0${intervalObject.minutes}`) : "");
+    intervalString += (intervalObject.hours || intervalObject.days ? (intervalObject.hours && intervalObject.hours >= 10 ? `${intervalObject.hours}:` : `0${intervalObject.hours}:`) : "");
+    intervalString += (intervalObject.minutes || intervalObject.hours || intervalObject.days ? (intervalObject.minutes && intervalObject.minutes >= 10 ? `${intervalObject.minutes}:` : `0${intervalObject.minutes}:`) : "");
     intervalString += `${intervalObject.seconds >= 10 ? intervalObject.seconds : `0${intervalObject.seconds}`}${intervalObject.minutes ? "." : "s."}`;
 
 

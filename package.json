@@ -9,6 +9,7 @@
     "prestartlarge": "npm run build",
     "startlarge": "node --max-old-space-size=20480 ./dist/index.js",
     "build": "npx tsc",
+    "prestartjs": "npm run build",
     "startjs": "node ./dist/index.js"
   },
   "dependencies": {

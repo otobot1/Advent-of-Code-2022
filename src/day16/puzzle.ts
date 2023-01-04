@@ -1,10 +1,11 @@
 import fs from "fs";
-import { countUniqueCombinationsOfListElements, printProgress } from "../utils/utils.js";
+import { Worker } from "worker_threads";
+import { printProgress } from "../utils/utils.js";
 
 
 
 
-type Valve = {
+export type Valve = {
     name: string;
     index: number;
     flowRate: number;
@@ -12,7 +13,7 @@ type Valve = {
 }
 
 
-type ValveCollection = {
+export type ValveCollection = {
     [index: string]: Valve;
 }
 
@@ -23,12 +24,30 @@ type ValveInfo = {
 }
 
 
+type Cache = {
+    [index: string]: number | undefined;
+}
+
+
+export type WorkerData = {
+    elephantNamesList: string[];
+    myNamesList: string[];
+    valveCollection: ValveCollection;
+    valveDistanceMatrix: number[][];
+}
+
+
+type MaximumPressureRelease = { max: number };
+
+
 
 
 const isTest = false;
 const isPartTwo = true;
 
 
+const THREAD_COUNT = 4;
+const cache: Cache = {};
 let startTime = 0;
 
 
@@ -60,7 +79,7 @@ export const main = () => {
 
 
 
-const puzzle = () => {
+const puzzle = async () => {
     const inputPath = `${process.env.PROJECT_ROOT}/src/day16/${isTest ? "test-" : ""}input.txt`;
     if (!inputPath) throw "Invalid inputPath";
 
@@ -77,7 +96,7 @@ const puzzle = () => {
     const valveInfo = getValveCollection(stringArray);
 
 
-    const maximumPressureRelease = getMaximumPressureRelease(valveInfo);
+    const maximumPressureRelease = await getMaximumPressureRelease(valveInfo);
 
 
     console.log(maximumPressureRelease);
@@ -124,7 +143,7 @@ const getValveCollection = (stringArray: string[]): ValveInfo => {
 
 
 
-const getMaximumPressureRelease = (valveInfo: ValveInfo): number => {
+const getMaximumPressureRelease = async (valveInfo: ValveInfo): Promise<number> => {
     const valveDistanceMatrix = getValveDistanceMatrix(valveInfo);
 
     // outputMatrixToFile(`${process.env.PROJECT_ROOT}/src/day16/matrix-output.txt`, valveDistanceMatrix);
@@ -136,7 +155,7 @@ const getMaximumPressureRelease = (valveInfo: ValveInfo): number => {
 
     let maximumPressureRelease: number;
 
-    if (isPartTwo) maximumPressureRelease = getPressureWithElephant(startingValve, valveInfo, valveDistanceMatrix);
+    if (isPartTwo) maximumPressureRelease = await getPressureWithElephant(valveInfo, valveDistanceMatrix);
     else maximumPressureRelease = getPressureRelease(startingValve, [], 0, 30, namesList, valveCollection, valveDistanceMatrix);
 
 
@@ -146,25 +165,22 @@ const getMaximumPressureRelease = (valveInfo: ValveInfo): number => {
 
 
 
-const getPressureWithElephant = (startingValve: Valve, valveInfo: ValveInfo, valveDistanceMatrix: number[][]): number => {
+const getPressureWithElephant = async (valveInfo: ValveInfo, valveDistanceMatrix: number[][]): Promise<number> => {
     const { namesList: originalNamesList, valveCollection } = valveInfo;
     const originalValveCount = originalNamesList.length;
-    let maximumPressureRelease = 0;
-
-    const totalCombinations = countUniqueCombinationsOfListElements(originalNamesList);
-    let combinationCounter = 0;
+    const maximumPressureRelease: MaximumPressureRelease = { max: 0 };
+    const workerPromises: Promise<void>[] = [];
 
 
-    for (let outerIndex = 0; outerIndex < originalValveCount; outerIndex++) {
+    let outerIndex = 0
+    let leadingElephantValveNames: string[];
+
+    for (; outerIndex < originalValveCount; outerIndex++) {
         const firstValveName = originalNamesList[outerIndex];
-        const leadingElephantValveNames = [firstValveName];
-        
-        
-        let currentPressureRelease = getPressureRelease(startingValve, [], 0, 26, leadingElephantValveNames, valveCollection, valveDistanceMatrix);
-        currentPressureRelease += getPressureRelease(startingValve, [], 0, 26, getMyValveNames(originalNamesList, leadingElephantValveNames), valveCollection, valveDistanceMatrix);
-        combinationCounter++;
+        leadingElephantValveNames = [firstValveName];
 
-        if (currentPressureRelease > maximumPressureRelease) maximumPressureRelease = currentPressureRelease;
+
+        workerPromises.push(getCurrentPressureRelease(leadingElephantValveNames, originalNamesList, valveCollection, valveDistanceMatrix, maximumPressureRelease));
 
 
         while (leadingElephantValveNames.length < originalValveCount - outerIndex) {
@@ -172,42 +188,90 @@ const getPressureWithElephant = (startingValve: Valve, valveInfo: ValveInfo, val
                 const currentValveName = originalNamesList[innerIndex];
                 const currentElephantValveNames = [...leadingElephantValveNames, currentValveName];
 
-                currentPressureRelease = getPressureRelease(startingValve, [], 0, 26, currentElephantValveNames, valveCollection, valveDistanceMatrix);
-                currentPressureRelease += getPressureRelease(startingValve, [], 0, 26, getMyValveNames(originalNamesList, currentElephantValveNames), valveCollection, valveDistanceMatrix);
-                combinationCounter++;
-    
-                if (currentPressureRelease > maximumPressureRelease) maximumPressureRelease = currentPressureRelease;
+                workerPromises.push(getCurrentPressureRelease(currentElephantValveNames, originalNamesList, valveCollection, valveDistanceMatrix, maximumPressureRelease));
             }
 
 
             const nextValveName = originalNamesList[leadingElephantValveNames.length];
             leadingElephantValveNames.push(nextValveName);
-        
-        
-            currentPressureRelease = getPressureRelease(startingValve, [], 0, 26, leadingElephantValveNames, valveCollection, valveDistanceMatrix);
-            currentPressureRelease += getPressureRelease(startingValve, [], 0, 26, getMyValveNames(originalNamesList, leadingElephantValveNames), valveCollection, valveDistanceMatrix);
-            combinationCounter++;
-    
-            if (currentPressureRelease > maximumPressureRelease) maximumPressureRelease = currentPressureRelease;
-
-
-            printProgress(combinationCounter, totalCombinations, startTime);
         }
+
+
+        const remainingNamesList = originalNamesList.filter((valveName) => !leadingElephantValveNames.includes(valveName))
+
+
+        workerPromises.push(getCurrentPressureRelease(remainingNamesList, originalNamesList, valveCollection, valveDistanceMatrix, maximumPressureRelease));
+
+
+        await Promise.all(workerPromises);
+
+
+        printProgress(outerIndex + 1, originalValveCount, startTime);
     }
 
 
-    return maximumPressureRelease;
+    return maximumPressureRelease.max;
 }
 
 
 
 
-const getMyValveNames = (namesList: string[], leadingElephantValveNames: string[]): string[] => namesList.filter((valveName) => !leadingElephantValveNames.includes(valveName));
+export const getMyValveNames = (namesList: string[], leadingElephantValveNames: string[]): string[] => namesList.filter((valveName) => !leadingElephantValveNames.includes(valveName));
 
 
 
 
-const getPressureRelease = (currentValve: Valve, oldMovesList: string[], oldPressureRelease: number, oldMinutesRemaining: number, namesList: string[], valveCollection: ValveCollection, valveDistanceMatrix: number[][]): number => {
+const getCurrentPressureRelease = async (
+    currentElephantValveNames: string[], originalNamesList: string[], valveCollection: ValveCollection, valveDistanceMatrix: number[][], maximumPressureRelease: MaximumPressureRelease
+): Promise<void> => {
+    const myValveNames = getMyValveNames(originalNamesList, currentElephantValveNames);
+
+
+    const elephantPressureRelease = checkCache(currentElephantValveNames);
+    const myPressureRelease = checkCache(myValveNames);
+
+
+    let currentPressureRelease: number;
+
+    if (elephantPressureRelease && myPressureRelease) currentPressureRelease = elephantPressureRelease + myPressureRelease;
+    else currentPressureRelease = await createWorker(currentElephantValveNames, myValveNames, valveCollection, valveDistanceMatrix);
+
+
+    if (currentPressureRelease > maximumPressureRelease.max) maximumPressureRelease.max = currentPressureRelease;
+}
+
+
+
+
+const checkCache = (namesList: string[]): number | undefined => {
+    const cacheID = namesList.join("");
+
+    return cache[cacheID];
+}
+
+
+
+
+const createWorker = (elephantNamesList: string[], myNamesList: string[], valveCollection: ValveCollection, valveDistanceMatrix: number[][]): Promise<number> => {
+    return new Promise((resolve, reject) => {
+        const workerData: WorkerData = { elephantNamesList, myNamesList, valveCollection, valveDistanceMatrix };
+
+        //@ts-ignore    //handle ts vs js
+        const path = process[Symbol.for("ts-node.register.instance")] ? "./src/day16/worker" : "./dist/day16/worker";
+
+
+        const worker = new Worker(path, { workerData });
+
+
+        worker.on("message", (data: unknown) => resolve(Number(data)));
+        worker.on("error", (error) => reject(error));
+    });
+}
+
+
+
+
+export const getPressureRelease = (currentValve: Valve, oldMovesList: string[], oldPressureRelease: number, oldMinutesRemaining: number, namesList: string[], valveCollection: ValveCollection, valveDistanceMatrix: number[][]): number => {
     const distanceRow = valveDistanceMatrix[currentValve.index];
 
 
